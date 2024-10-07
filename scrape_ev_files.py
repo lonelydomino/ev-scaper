@@ -29,7 +29,7 @@ def init_driver(local_download_path):
     svc = webdriver.ChromeService(executable_path=binary_path)
 
     chrome_options = Options()
-    chrome_options.add_argument("--headless")  # better for docker/portal
+    chrome_options.add_argument("--headless=new")  # better for docker/portal
 
     driver = webdriver.Chrome(service=svc, options=chrome_options)
 
@@ -159,13 +159,20 @@ def download_election_data(driver, homepage, election):
                 os.rename(os.path.join(CSV_DL_DIR, latest_file), os.path.join(CSV_DL_DIR, "GOP_" + str(datetime.strptime(d, '%B %d,%Y').strftime('%m_%d_%Y')) + '_EV.csv'))
             if get_partisanship(election) == 'N/A':
                 os.rename(os.path.join(CSV_DL_DIR, latest_file), os.path.join(CSV_DL_DIR, str(datetime.strptime(d, '%B %d,%Y').strftime('%m_%d_%Y')) + '_EV.csv'))
-
+            
+            #unindent two levels; out of the try/except block and out of the for loop of dates
+    print(f"uploading to GBQ: {GBQ_DEST_DATASET}.{GBQ_DEST_TABLENAME}")
+    pandas_gbq.to_gbq(final_df, 
+            f"{GBQ_DEST_DATASET}.{GBQ_DEST_TABLENAME}", 
+            if_exists='replace',
+            project_id='demstxsp')    
+            
+                
 if __name__ == "__main__":
 
     # PARAMS (should be configurable)
     ELECTION = ''
-    GBQ_DEST_DATASET = "evav_processing_2024"
-    GBQ_DEST_TABLENAME = ELECTION.replace(" ", "_").lower()
+   
 
     # Constants (these are not configurable, or at least there's no point in changing them)
     ORIGIN_URL = "https://earlyvoting.texas-election.com/Elections/getElectionDetails.do"
@@ -198,7 +205,12 @@ if __name__ == "__main__":
     # if user clicks ok
         if event == 'Ok':
             ELECTION = values['_LIST_']
+            GBQ_DEST_DATASET = "evav_processing_2024"
+            GBQ_DEST_TABLENAME = ELECTION.replace(" ", "_").lower()
+            print(f" to GBQ: {GBQ_DEST_DATASET}.{GBQ_DEST_TABLENAME}")
             download_election_data(driver, ORIGIN_URL, ELECTION)
+
+        
             break
     # if user closes window or clicks cancel
         if event == sg.WIN_CLOSED or event == 'Cancel':
@@ -212,10 +224,4 @@ if __name__ == "__main__":
    
      
 
-    # unindent two levels; out of the try/except block and out of the for loop of dates
     
-    # print(f"uploading to GBQ: {GBQ_DEST_DATASET}.{GBQ_DEST_TABLENAME}")
-    # pandas_gbq.to_gbq(final_df, 
-    #         f"{GBQ_DEST_DATASET}.{GBQ_DEST_TABLENAME}", 
-    #         if_exists='replace',
-    #         project_id='demstxsp')
